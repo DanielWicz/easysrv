@@ -7,6 +7,11 @@ import numpy as np
 import unittest
 from easysrv import SRV
 
+import os
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 
 class SampleMSM:
     def __init__(self):
@@ -48,7 +53,7 @@ class SampleMSM:
         return np.array(emissions)
 
     def sample(self, n=10000, dims=2):
-        dims = 2
+        dims = dims
         sep = 50
         mus = np.random.randn(4, dims) * sep
         sigmas = np.abs(np.random.randn(4, dims)) * sep
@@ -59,7 +64,7 @@ class SampleMSM:
 
 
 msm = SampleMSM()
-sample_n = 1000
+sample_n = 10000
 num = 40
 data = [msm.sample(n=sample_n, dims=10) for x in range(num)]
 model = tf.keras.models.Sequential(
