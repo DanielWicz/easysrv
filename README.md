@@ -36,8 +36,11 @@ model(features[0])
 # initialize optimizer
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
+# initialize SRV, epochs - number of training iterations, split - train:validation split
+srv = SRV(model=model, optimizer=optimizer, epochs=20, lagtime=1, split=0.05)
+
 # fit SRV model
-history = svr.fit(features)
+history = srv.fit(features)
 
 # depict training process
 plt.plot(history['Training loss'])
