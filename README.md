@@ -3,11 +3,18 @@
 This is an package providign State Reversible Vampnet from the J. Chem. Phys. 150, 214114 (2019). This is a deep dimensionality reduction used for time series to extract low dimensional slow process description. Usually it is used as an pre-processing tool to build Markov State Model to reduce number of dimensions in the system.
 
 ## Installation
-At the moment installation is available through github, but PyPi planned soon.
+At the moment installation is available through github and pypi
+
+### github:
 ```
 git clone https://github.com/DanielWicz/easysrv
 cd easysrv
 pip install .
+```
+
+### PyPi
+```
+pip install easysrv
 ```
 
 ## Usage
