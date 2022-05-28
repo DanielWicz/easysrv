@@ -55,6 +55,11 @@ plt.title("Training loss")
 plt.xlabel("Epochs")
 plt.ylabel("Loss")
 
+plt.plot(history['Val Training loss'])
+plt.title("Validation Training loss")
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+
 plt.plot(history['VAMP2 valid score'])
 plt.title("Validation VAMP2")
 plt.xlabel("Epochs")
@@ -65,7 +70,8 @@ plt.bar(modes, history['eigenvalues'])
 plt.title("Slow processses eigenvalues")
 
 # transform relevant features onto slow processes
-model_out = svr.transform(features)
+# remove_modes allows for removing not interesting slow processes from slowest to the fastest
+model_out = svr.transform(features, remove_modes=[])
 ```
 
 ## References

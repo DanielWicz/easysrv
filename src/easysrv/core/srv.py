@@ -34,6 +34,7 @@ class SRV:
         # stats
 
         self.train_loss = []
+        self.train_val_loss = []
         self.validation_vamp = []
 
     def fit(self, data, verbose=True):
@@ -54,6 +55,7 @@ class SRV:
             "eigenvalues": list(self.eigenvalues_.numpy()),
             "VAMP2 valid score": self.validation_vamp,
             "Training loss": self.train_loss,
+            "Val Training loss": self.train_val_loss,
         }
         return history
 
@@ -107,6 +109,7 @@ class SRV:
         """
         for i in range(self.epochs):
             loss = []
+            val_loss = []
             vamp2_met = []
             for batch in self.training_data:
                 batch_shift = tf.convert_to_tensor(batch[self.ae_lagtime :])
@@ -117,16 +120,21 @@ class SRV:
                 )
                 loss.append(batch_ae_loss)
             for batch in self.validation_data:
-                batch_shift = tf.convert_to_tensor(batch[self.ae_lagtime :])
-                batch_back = tf.convert_to_tensor(batch[: -self.ae_lagtime])
-                vamp2_score = metric_VAMP2(batch_back, batch_shift, self.model)
+                batch_shift = self.model(tf.convert_to_tensor(batch[self.ae_lagtime :]))
+                batch_back = self.model(tf.convert_to_tensor(batch[: -self.ae_lagtime]))
+                vamp2_score = metric_VAMP2(batch_back, batch_shift)
+                batch_val_loss = self.loss_func_vamp(batch_back, batch_shift)
                 vamp2_met.append(vamp2_score)
+                val_loss.append(batch_val_loss)
             mean_loss = float(np.mean(loss))
+            mean_val_loss = float(np.mean(val_loss))
             mean_vamp2 = float(np.mean(vamp2_met))
             self.train_loss.append(mean_loss)
+            self.train_val_loss.append(mean_val_loss)
             self.validation_vamp.append(mean_vamp2)
             if verbose:
                 print("Loss for epoch {0} is {1}".format(i, mean_loss))
+                print("Val Loss for epoch {0} is {1}".format(i, mean_val_loss))
                 print("Validation VAMP2 for epoch {0} is {1}".format(i, mean_vamp2))
 
         self._calc_basis()
