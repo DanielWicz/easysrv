@@ -57,11 +57,13 @@ class SRV:
         }
         return history
 
-    def transform(self, data):
+    def transform(self, data, remove_modes=[]):
         """Transforms data onto SRV slow processes. Order is the same as in the data.
         Arguments:
             data: A list of features extracted from trajectories as numpy arrays.
                   Also a generator that returns a numpy array will work.
+            remove_modes: Remove modes indexed from 0 to n, where 0 is the slowest.
+                          For example you can specify [0, 2] to remove slowest and third slowest.
         Returns:
             Transformed data onto slow processes as a list of numpy arrays
         """
@@ -69,24 +71,32 @@ class SRV:
         all_data = []
         for datapoint in data:
             z = self.model(datapoint) - self.means_
-            z_product = tf.matmul(z, self.eigenvectors_)
-            z_norm = z_product / self.norms_
+            eigenvectors = self.eigenvectors_
+            # remove some eigenvectors
+            all_eig_ind = [
+                i for i in range(eigenvectors.shape[0]) if i not in remove_modes
+            ]
+            eigv = tf.transpose(tf.gather(tf.transpose(eigenvectors), all_eig_ind))
+            z_product = tf.matmul(z, eigv)
+            norms = tf.transpose(tf.gather(tf.transpose(self.norms_), all_eig_ind))
+            z_norm = z_product / norms
             all_data.append(z_norm.numpy())
 
         return all_data
 
-    def fit_transform(self, data, verbose=True):
+    def fit_transform(self, data, verbose=True, remove_modes=[]):
         """Fits SRV to given data and transforms them onto slow processes, order is the same as in the data.
         Arguments:
             data: A list of features extracted from trajectories as numpy arrays.
                   Also a generator that returns a numpy array will work.
-
+            remove_modes: Remove modes indexed from 0 to n, where 0 is the slowest.
+                          For example you can specify [0, 2] to remove slowest and third slowest.
         Returns:
             Transformed data onto slow processes as a list of numpy arrays
         """
 
         self.fit(data, verbose=verbose)
-        return self.transform(data)
+        return self.transform(data, remove_modes=remove_modes)
 
     def train(self, verbose=True):
         """Trains SRV for a given model.
