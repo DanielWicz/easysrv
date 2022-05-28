@@ -270,9 +270,9 @@ class SRV:
                 )
                 / 2
             )
-        lambdas, eig_v = tf.linalg.eigh(A)
+            add_loss += -tf.reduce_sum(tf.math.sign(lambdas))
         # train only with respect to positive eigenvalues
-        loss = -1 - tf.reduce_sum(tf.math.sign(lambdas) * lambdas**2) + add_loss
+        loss = -1 - tf.reduce_sum(lambdas**2) + add_loss
         loss = tf.cast(loss, tf.float32)
 
         return loss
