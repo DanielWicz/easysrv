@@ -35,7 +35,8 @@ model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(100, kernel_regularizer=tf.keras.regularizers.L2(0.0001), kernel_initializer='lecun_normal'),
     tf.keras.layers.Activation("swish"),
     tf.keras.layers.BatchNormalization(),
-    tf.keras.layers.Dense(2, kernel_regularizer=tf.keras.regularizers.L2(0.0001))])
+    tf.keras.layers.Dense(2, kernel_regularizer=tf.keras.regularizers.L2(0.0001)),
+    tf.keras.layers.GaussianNoise(1)])
 # assume that list with data are described as a variable features
 # pass single datapoint to set shapes of the matrices
 model(features[0])
