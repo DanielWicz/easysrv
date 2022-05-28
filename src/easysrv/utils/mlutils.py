@@ -40,7 +40,7 @@ def calc_cov(x, y, rblw=False, use_shrinkage=False, no_normalize=False):
     N = tf.cast(tf.shape(x)[0], tf.float64)
     feat = tf.cast(tf.shape(x)[1], tf.float64)
     if not no_normalize:
-        cov = 1 / (N - 1) * tf.matmul(x, y, transpose_a=True)
+        cov = 1 / N * tf.matmul(x, y, transpose_a=True)
     else:
         cov = tf.matmul(x, y, transpose_a=True)
     if rblw and use_shrinkage:

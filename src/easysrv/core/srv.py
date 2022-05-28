@@ -147,17 +147,8 @@ class SRV:
     def _calc_basis_estimate(self, batch_shift, batch_back):
         zt0 = self.model(batch_back, training=False)
         ztt = self.model(batch_shift, training=False)
-        ztt_nom = tf.cast(ztt, tf.float64)
-        zt0_nom = tf.cast(zt0, tf.float64)
-        ztt = ztt_nom - tf.reduce_mean(ztt_nom, axis=0)
-        zt0 = zt0_nom - tf.reduce_mean(zt0_nom, axis=0)
-        # weights = self._koopman_weight(zt0, ztt)
-        cov_01 = calc_cov(zt0, ztt)
-        cov_10 = calc_cov(ztt, zt0)
-        cov_11 = calc_cov(ztt, ztt)
-        cov_00 = calc_cov(zt0, zt0)
 
-        return cov_01, cov_10, cov_11, cov_00, zt0_nom, ztt_nom
+        return zt0, ztt
 
     def _calc_basis(self):
         """Calculates basis vectors for the SRV method, based on the average
@@ -180,35 +171,30 @@ class SRV:
             batch_back = tf.convert_to_tensor(batch[: -self.ae_lagtime])
             assert tf.rank(batch_back) == 2
             assert tf.rank(batch_shift) == 2
-            (
-                cov_01e,
-                cov_10e,
-                cov_11e,
-                cov_00e,
-                zt0_nom,
-                ztt_nom,
-            ) = self._calc_basis_estimate(batch_shift, batch_back)
+
+            zt0_nom, ztt_nom = self._calc_basis_estimate(batch_shift, batch_back)
             zt0_buffer.append(tf.cast(zt0_nom, tf.float32))
             ztt_buffer.append(tf.cast(ztt_nom, tf.float32))
             # weights = self._koopman_weight(zt0, ztt)
-            cov_01 += cov_01e
-            cov_10 += cov_10e
-            cov_11 += cov_11e
-            cov_00 += cov_00e
-            obs += 1
 
         zt0_concat = tf.concat(zt0_buffer, axis=0)
         ztt_concat = tf.concat(ztt_buffer, axis=0)
         x_concat = tf.concat([ztt_concat, zt0_concat], axis=0)
         self.means_ = tf.reduce_mean(x_concat, axis=0)
+        zt0_concat -= tf.reduce_mean(zt0_concat, axis=0)
+        ztt_concat -= tf.reduce_mean(ztt_concat, axis=0)
+        zt0_concat = tf.cast(zt0_concat, tf.float64)
+        ztt_concat = tf.cast(ztt_concat, tf.float64)
+        # calc covariances
+        cov_01 = calc_cov(zt0_concat, ztt_concat)
+        cov_10 = calc_cov(ztt_concat, zt0_concat)
+        cov_00 = calc_cov(zt0_concat, zt0_concat)
+        cov_11 = calc_cov(ztt_concat, ztt_concat)
 
-        cov_01 = cov_01 / obs
-        cov_10 = cov_10 / obs
-        cov_11 = cov_11 / obs
-        cov_00 = cov_00 / obs
         self.cov_0 = 0.5 * (cov_00 + cov_11)
         self.cov_1 = 0.5 * (cov_01 + cov_10)
         assert self.cov_0.shape[0] == zt0_nom.shape[1]
+
         cov_1_numpy = self.cov_1.numpy()
         cov_0_numpy = self.cov_0.numpy()
         assert cov_1_numpy.dtype == np.float64
