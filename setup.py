@@ -24,8 +24,8 @@ setuptools.setup(
     classifiers=[
         # see https://pypi.org/classifiers/
         "Development Status :: 3 - Alpha",
-        "Intended Audience :: Science/Machine Learning",
-        "Topic :: Machine Learning/Molecular Dynamics",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
