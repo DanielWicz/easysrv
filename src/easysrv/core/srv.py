@@ -158,11 +158,6 @@ class SRV:
         Returns:
             None
         """
-        M = self.dense_out
-        cov_01 = tf.zeros(shape=(M, M), dtype=tf.float64)
-        cov_10 = tf.zeros(shape=(M, M), dtype=tf.float64)
-        cov_11 = tf.zeros(shape=(M, M), dtype=tf.float64)
-        cov_00 = tf.zeros(shape=(M, M), dtype=tf.float64)
         zt0_buffer = []
         ztt_buffer = []
         obs = 0
