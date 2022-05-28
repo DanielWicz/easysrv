@@ -112,8 +112,8 @@ class SRV:
                 batch_shift = tf.convert_to_tensor(batch[self.ae_lagtime :])
                 batch_back = tf.convert_to_tensor(batch[: -self.ae_lagtime])
                 batch_ae_loss, g_norm_ae = self._train_step_vamp(
-                    batch_back,
                     batch_shift,
+                    batch_back,
                 )
                 loss.append(batch_ae_loss)
             for batch in self.validation_data:
@@ -132,7 +132,7 @@ class SRV:
         self._calc_basis()
 
     @tf.function
-    def _calc_basis_estimate(self, batch_back, batch_shift):
+    def _calc_basis_estimate(self, batch_shift, batch_back):
         zt0 = self.model(batch_back)
         ztt = self.model(batch_shift)
         ztt_nom = tf.cast(ztt, tf.float64)
@@ -164,8 +164,8 @@ class SRV:
         ztt_buffer = []
         obs = 0
         for batch in self.training_data:
-            batch_back = tf.convert_to_tensor(batch[: -self.ae_lagtime])
             batch_shift = tf.convert_to_tensor(batch[self.ae_lagtime :])
+            batch_back = tf.convert_to_tensor(batch[: -self.ae_lagtime])
             assert tf.rank(batch_back) == 2
             assert tf.rank(batch_shift) == 2
             (
@@ -175,7 +175,7 @@ class SRV:
                 cov_00e,
                 zt0_nom,
                 ztt_nom,
-            ) = self._calc_basis_estimate(batch_back, batch_shift)
+            ) = self._calc_basis_estimate(batch_shift, batch_back)
             zt0_buffer.append(tf.cast(zt0_nom, tf.float32))
             ztt_buffer.append(tf.cast(ztt_nom, tf.float32))
             # weights = self._koopman_weight(zt0, ztt)
@@ -214,23 +214,23 @@ class SRV:
         self.norms_ = tf.math.sqrt(tf.reduce_mean(z * z, axis=0))
 
     @tf.function
-    def loss_func_vamp(self, y_true, y_pred, reversible=False, constr_cov=True):
+    def loss_func_vamp(self, shift, back, reversible=False, constr_cov=True):
         """Calculates the VAMP-2 score with respect to the network lobes.
 
         Based on:
             https://github.com/markovmodel/deeptime/blob/master/vampnet/vampnet/vampnet.py
             https://github.com/hsidky/srv/blob/master/hde/hde.py
         Arguments:
-            y_true: tensorflow tensor, not shifted by tau and truncated in the
+            shift: tensorflow tensor, shifted by tau and truncated in the
                     batch dimension.
 
-            y_pred: tensorlfow tensor, shifted by tau in the batch dimension and
+            back: tensorlfow tensor, not shifted by tau in the batch dimension and
                     truncated so by size of tau.
         Returns:
             loss_score: tensorflow tensor with shape (1, ).
         """
-        N = tf.shape(y_true)[0]
-        zt0, ztt = (y_true, y_pred)
+        N = tf.shape(shift)[0]
+        ztt, zt0 = (shift, back)
         zt0 = tf.cast(zt0, tf.float64)
         ztt = tf.cast(ztt, tf.float64)
         N = tf.cast(N, tf.float64)
@@ -270,20 +270,20 @@ class SRV:
         return loss
 
     @tf.function
-    def _train_step_vamp(self, inp_tup, out_tup):
+    def _train_step_vamp(self, shift, back):
         """One train step as the TF 2 graph for autoencoder.
         Arguments:
-            inp_tup: Feature matrix which is not shiften by tau
-            out_tup: Feature matrix which is shifted by tau
+            shift: Feature matrix which is shifted by tau
+            back: Feature matrix which is not shifted by tau
         Returns:
             Tuple with loss and global norm
         """
         with tf.GradientTape() as tape:
             # standarization of obs
-            state_target = self.model(inp_tup, training=True)
-            state_decoder = self.model(out_tup, training=True)
+            out_shift = self.model(shift, training=True)
+            out_back = self.model(back, training=True)
             regul_loss = tf.reduce_sum(self.model.losses)
-            loss = self.loss_func_vamp(state_decoder, state_target)
+            loss = self.loss_func_vamp(out_shift, out_back)
             loss += regul_loss
             trainable_var = self.model.trainable_variables
         grads = tape.gradient((loss), trainable_var)

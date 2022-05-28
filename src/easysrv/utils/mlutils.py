@@ -50,7 +50,7 @@ def calc_cov(x, y, rblw=True, use_shrinkage=True, no_normalize=False):
         return cov
 
 
-def metric_VAMP2(y_true, y_shifted, model):
+def metric_VAMP2(shift, back, model):
     """Returns the sum of the squared top k eigenvalues of the vamp matrix,
     with k determined by the wrapper parameter k_eig, and the vamp matrix
     defined as:
@@ -58,15 +58,15 @@ def metric_VAMP2(y_true, y_shifted, model):
     Can be used as a metric function in model.fit()
 
     Arguments:
-        y_true: not shifted data
-        y_shift: shifted data
+        shift: shifted data
+        back: not shifted data
         model: machine learning model used to train SVR
     Returns:
         sum of the squared k highest eigenvalues in the vamp matrix (VAMP2 score)
     """
-    N = tf.shape(y_true)[0]
-    zt0 = model(y_true)
-    ztt = model(y_shifted)
+    N = tf.shape(shift)[0]
+    zt0 = model(back)
+    ztt = model(shift)
 
     # shape (batch_size, output)
     zt0 = zt0 - tf.reduce_mean(zt0, axis=0, keepdims=True)
