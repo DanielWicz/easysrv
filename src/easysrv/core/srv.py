@@ -72,7 +72,7 @@ class SRV:
 
         all_data = []
         for datapoint in data:
-            z = self.model(datapoint) - self.means_
+            z = self.model(datapoint, training=False) - self.means_
             eigenvectors = self.eigenvectors_
             # remove some eigenvectors
             all_eig_ind = [
@@ -120,8 +120,12 @@ class SRV:
                 )
                 loss.append(batch_ae_loss)
             for batch in self.validation_data:
-                batch_shift = self.model(tf.convert_to_tensor(batch[self.ae_lagtime :]))
-                batch_back = self.model(tf.convert_to_tensor(batch[: -self.ae_lagtime]))
+                batch_shift = self.model(
+                    tf.convert_to_tensor(batch[self.ae_lagtime :]), training=False
+                )
+                batch_back = self.model(
+                    tf.convert_to_tensor(batch[: -self.ae_lagtime]), training=False
+                )
                 vamp2_score = metric_VAMP2(batch_back, batch_shift)
                 batch_val_loss = self.loss_func_vamp(batch_back, batch_shift)
                 vamp2_met.append(vamp2_score)
@@ -141,8 +145,8 @@ class SRV:
 
     @tf.function
     def _calc_basis_estimate(self, batch_shift, batch_back):
-        zt0 = self.model(batch_back)
-        ztt = self.model(batch_shift)
+        zt0 = self.model(batch_back, training=False)
+        ztt = self.model(batch_shift, training=False)
         ztt_nom = tf.cast(ztt, tf.float64)
         zt0_nom = tf.cast(zt0, tf.float64)
         ztt = ztt_nom - tf.reduce_mean(ztt_nom, axis=0)
