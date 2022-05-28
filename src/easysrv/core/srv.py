@@ -140,8 +140,8 @@ class SRV:
         ztt = ztt_nom - tf.reduce_mean(ztt_nom, axis=0)
         zt0 = zt0_nom - tf.reduce_mean(zt0_nom, axis=0)
         # weights = self._koopman_weight(zt0, ztt)
-        cov_01 = calc_cov(zt0, ztt, rblw=False, use_shrinkage=False)
-        cov_10 = calc_cov(ztt, zt0, rblw=False, use_shrinkage=False)
+        cov_01 = calc_cov(zt0, ztt)
+        cov_10 = calc_cov(ztt, zt0)
         cov_11 = calc_cov(ztt, ztt)
         cov_00 = calc_cov(zt0, zt0)
 
@@ -242,8 +242,8 @@ class SRV:
         zt0 = zt0 - zt0_mean
         ztt = ztt - ztt_mean
         # shape (output, output)
-        cov_01 = calc_cov(zt0, ztt, rblw=False, use_shrinkage=False)
-        cov_10 = calc_cov(ztt, zt0, rblw=False, use_shrinkage=False)
+        cov_01 = calc_cov(zt0, ztt)
+        cov_10 = calc_cov(ztt, zt0)
         cov_00 = calc_cov(zt0, zt0)
         cov_11 = calc_cov(ztt, ztt)
         cov_0 = 0.5 * (cov_00 + cov_11)

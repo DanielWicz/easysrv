@@ -27,7 +27,7 @@ def rao_blackwell_ledoit_wolf(cov, N):
     return (1 - rho) * cov + rho * F, rho
 
 
-def calc_cov(x, y, rblw=True, use_shrinkage=True, no_normalize=False):
+def calc_cov(x, y, rblw=False, use_shrinkage=False, no_normalize=False):
     """Calculates covariance matrix from a batch of tensorflow data.
     x: first set of variables as an tensorflow array
     y: second set of variables as an tensorflow array
