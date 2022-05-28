@@ -1,7 +1,6 @@
 import tensorflow as tf
 
 
-@tf.function(experimental_relax_shapes=True)
 def rao_blackwell_ledoit_wolf(cov, N):
     """Rao-Blackwellized Ledoit-Wolf shrinkaged estimator of the covariance
     matrix.
@@ -28,7 +27,6 @@ def rao_blackwell_ledoit_wolf(cov, N):
     return (1 - rho) * cov + rho * F, rho
 
 
-@tf.function(experimental_relax_shapes=True)
 def calc_cov(x, y, rblw=True, use_shrinkage=True, no_normalize=False):
     """Calculates covariance matrix from a batch of tensorflow data.
     x: first set of variables as an tensorflow array

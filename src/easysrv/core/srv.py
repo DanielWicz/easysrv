@@ -257,7 +257,7 @@ class SRV:
 
         return loss
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function
     def _train_step_vamp(self, inp_tup, out_tup):
         """One train step as the TF 2 graph for autoencoder.
         Arguments:
