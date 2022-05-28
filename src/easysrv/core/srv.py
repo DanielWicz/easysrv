@@ -29,6 +29,8 @@ class SRV:
         self.means_ = None
 
         self.dense_out = model.layers[-1].output_shape[-1]
+        if self.dense_out < 2:
+            raise ValueError("Output/num of slow processes has to be 2 or more")
         # stats
 
         self.train_loss = []
