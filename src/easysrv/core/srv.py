@@ -37,11 +37,15 @@ class SRV:
         self.train_val_loss = []
         self.validation_vamp = []
 
-    def fit(self, data, verbose=True):
+        # aux
+        self.n_batch_stored = 0
+
+    def fit(self, data, verbose=True, shuffle=True):
         """Fits SRV to given data
         Arguments:
             data: A list of features extracted from trajectories as numpy arrays.
                   Also a generator that returns a numpy array will work.
+            shuffle: If to shuffle data between batches
 
         Returns:
             A dictionary with history of eigenvalues, training loss and validation loss.
@@ -49,7 +53,7 @@ class SRV:
         split_size = int(len(data) * self.split)
         self.validation_data = data[:split_size]
         self.training_data = data[split_size:]
-        self.train(verbose=verbose)
+        self.train(verbose=verbose, shuffle=shuffle)
         self._calc_basis()
         history = {
             "eigenvalues": list(self.eigenvalues_.numpy()),
@@ -86,21 +90,22 @@ class SRV:
 
         return all_data
 
-    def fit_transform(self, data, verbose=True, remove_modes=[]):
+    def fit_transform(self, data, verbose=True, remove_modes=[], shuffle=True):
         """Fits SRV to given data and transforms them onto slow processes, order is the same as in the data.
         Arguments:
             data: A list of features extracted from trajectories as numpy arrays.
                   Also a generator that returns a numpy array will work.
             remove_modes: Remove modes indexed from 0 to n, where 0 is the slowest.
                           For example you can specify [0, 2] to remove slowest and third slowest.
+            shuffle: If to shuffle data between batches
         Returns:
             Transformed data onto slow processes as a list of numpy arrays
         """
 
-        self.fit(data, verbose=verbose)
+        self.fit(data, verbose=verbose, shuffle=shuffle)
         return self.transform(data, remove_modes=remove_modes)
 
-    def train(self, verbose=True):
+    def train(self, verbose=True, shuffle=None):
         """Trains SRV for a given model.
         Arguments:
             None
@@ -112,13 +117,19 @@ class SRV:
             val_loss = []
             vamp2_met = []
             for batch in self.training_data:
-                batch_shift = tf.convert_to_tensor(batch[self.ae_lagtime :])
-                batch_back = tf.convert_to_tensor(batch[: -self.ae_lagtime])
-                batch_ae_loss, g_norm_ae = self._train_step_vamp(
-                    batch_shift,
-                    batch_back,
+                local_training_data = self.batch_shuffle_aftern(
+                    batch, shuffle=shuffle, n=10, lagtime=self.ae_lagtime
                 )
-                loss.append(batch_ae_loss)
+                if local_training_data == None:
+                    continue
+                for shift, back in local_training_data:
+                    batch_shift = tf.convert_to_tensor(shift)
+                    batch_back = tf.convert_to_tensor(back)
+                    batch_ae_loss, g_norm_ae = self._train_step_vamp(
+                        batch_shift,
+                        batch_back,
+                    )
+                    loss.append(batch_ae_loss)
             for batch in self.validation_data:
                 batch_shift = self.model(
                     tf.convert_to_tensor(batch[self.ae_lagtime :]), training=False
@@ -284,3 +295,62 @@ class SRV:
         self.optimizer.apply_gradients(zip(grads, trainable_var))
 
         return loss, global_norm
+
+    def batch_shuffle_aftern(
+        self, current_batch, shuffle=True, n=3, last_batch=False, lagtime=None
+    ):
+        """Shuffles and divides into batches n stored batches.
+        Works by calling the function n times, when number of calls
+        reaches n, then shuffled/divided data are returned
+        """
+        if self.n_batch_stored == 0 and not last_batch:
+            self.batch_store_buffer = []
+            self.batch_store_buffer.append(current_batch)
+            self.n_batch_stored += 1
+            return None
+        # skip one, because the last on batch should return batches
+        elif self.n_batch_stored + 1 < n and not last_batch:
+            self.batch_store_buffer.append(current_batch)
+            self.n_batch_stored += 1
+            return None
+        else:
+            self.n_batch_stored = 0
+            if last_batch and len(self.batch_store_buffer) < 1:
+                self.batch_store_buffer = []
+                self.batch_store_buffer.append(current_batch)
+            else:
+                # the last one iteration accepts and returns batches
+                self.batch_store_buffer.append(current_batch)
+
+            # split onto shift, back
+            shift = [batch[lagtime:] for batch in self.batch_store_buffer]
+            back = [batch[:-lagtime] for batch in self.batch_store_buffer]
+            del self.batch_store_buffer
+            batch_size = shift[0].shape[0]
+            shift = np.concatenate(shift, axis=0)
+            back = np.concatenate(back, axis=0)
+            # generate indices
+            indices = np.arange(shift.shape[0])
+            if shuffle:
+                np.random.shuffle(indices)
+            # shuffle pairs of zt0 ztt
+            shift = shift[indices]
+            back = back[indices]
+            shift = np.split(
+                shift,
+                range(
+                    batch_size,
+                    shift.shape[0],
+                    batch_size,
+                ),
+            )
+            back = np.split(
+                back,
+                range(
+                    batch_size,
+                    back.shape[0],
+                    batch_size,
+                ),
+            )
+
+            return zip(shift, back)
