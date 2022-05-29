@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import scipy
 from easysrv.utils import calc_cov, metric_VAMP2
+import random
 
 
 class SRV:
@@ -112,10 +113,12 @@ class SRV:
         Returns:
             None
         """
+        self.training_data = list(self.training_data)
         for i in range(self.epochs):
             loss = []
             val_loss = []
             vamp2_met = []
+            random.shuffle(self.training_data)
             for batch in self.training_data:
                 local_training_data = self.batch_shuffle_aftern(
                     batch, shuffle=shuffle, n=10, lagtime=self.ae_lagtime
