@@ -41,8 +41,11 @@ model = tf.keras.models.Sequential([
 # pass single datapoint to set shapes of the matrices
 model(features[0])
 
+# import  autoclipper to clip gradients
+from easysrv.utils import AutoClipper
+
 # initialize optimizer
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.01, gradient_transformers=[AutoClipper(10)])
 
 # initialize SRV, epochs - number of training iterations, split - train:validation split
 srv = SRV(model=model, optimizer=optimizer, epochs=20, lagtime=1, split=0.05)
