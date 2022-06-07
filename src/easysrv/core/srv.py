@@ -119,9 +119,11 @@ class SRV:
             val_loss = []
             vamp2_met = []
             random.shuffle(self.training_data)
+            # to vary the number of mixed batches
+            n_cached = 10 + random.randint(0, 10)
             for batch in self.training_data:
                 local_training_data = self.batch_shuffle_aftern(
-                    batch, shuffle=shuffle, n=10, lagtime=self.ae_lagtime
+                    batch, shuffle=shuffle, n=n_cached, lagtime=self.ae_lagtime
                 )
                 if local_training_data == None:
                     continue
