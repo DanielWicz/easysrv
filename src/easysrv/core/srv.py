@@ -120,7 +120,7 @@ class SRV:
             vamp2_met = []
             random.shuffle(self.training_data)
             # to vary the number of mixed batches
-            n_cached = 10 + random.randint(0, 10)
+            n_cached = min(10 + random.randint(0, 10), len(self.training_data))
             for batch in self.training_data:
                 local_training_data = self.batch_shuffle_aftern(
                     batch, shuffle=shuffle, n=n_cached, lagtime=self.ae_lagtime
