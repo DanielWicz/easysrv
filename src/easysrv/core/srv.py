@@ -137,8 +137,8 @@ class SRV:
                 if local_training_data == None:
                     continue
                 for shift, back in local_training_data:
-                    batch_shift = tf.convert_to_tensor(shift)
-                    batch_back = tf.convert_to_tensor(back)
+                    batch_shift = tf.convert_to_tensor(shift, dtype=tf.float32)
+                    batch_back = tf.convert_to_tensor(back, dtype=tf.float32)
                     batch_ae_loss, g_norm_ae = self._train_step_vamp(
                         batch_shift,
                         batch_back,
@@ -207,16 +207,16 @@ class SRV:
         ztt_concat = tf.cast(ztt_concat, tf.float64)
         # calc covariances
         if not self.non_reversible:
-            cov_01 = calc_cov(zt0_concat, ztt_concat)
-            cov_10 = calc_cov(ztt_concat, zt0_concat)
-            cov_00 = calc_cov(zt0_concat, zt0_concat)
-            cov_11 = calc_cov(ztt_concat, ztt_concat)
+            cov_01 = calc_cov(zt0_concat, ztt_concat, double=True)
+            cov_10 = calc_cov(ztt_concat, zt0_concat, double=True)
+            cov_00 = calc_cov(zt0_concat, zt0_concat, double=True)
+            cov_11 = calc_cov(ztt_concat, ztt_concat, double=True)
 
             self.cov_0 = 0.5 * (cov_00 + cov_11)
             self.cov_1 = 0.5 * (cov_01 + cov_10)
         else:
-            self.cov_0 = calc_cov(zt0_concat, zt0_concat)
-            self.cov_1 = cov_01 = calc_cov(zt0_concat, ztt_concat)
+            self.cov_0 = calc_cov(zt0_concat, zt0_concat, double=True)
+            self.cov_1 = cov_01 = calc_cov(zt0_concat, ztt_concat, double=True)
 
         assert self.cov_0.shape[0] == zt0_nom.shape[1]
 
@@ -254,9 +254,7 @@ class SRV:
         """
         N = tf.shape(shift)[0]
         ztt, zt0 = (shift, back)
-        zt0 = tf.cast(zt0, tf.float64)
-        ztt = tf.cast(ztt, tf.float64)
-        N = tf.cast(N, tf.float64)
+        N = tf.cast(N, tf.float32)
         # shape (batch_size, output)
         zt0_mean = tf.reduce_mean(zt0, axis=0, keepdims=True)
         ztt_mean = tf.reduce_mean(ztt, axis=0, keepdims=True)
@@ -296,7 +294,6 @@ class SRV:
 
         # train only with respect to positive eigenvalues
         loss = -1 - tf.reduce_sum(lambdas**2) + add_loss
-        loss = tf.cast(loss, tf.float32)
 
         return loss
 

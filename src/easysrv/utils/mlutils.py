@@ -24,11 +24,11 @@ def rao_blackwell_ledoit_wolf(cov, N):
     U = (p * trace_cov2 / tf.linalg.trace(cov) ** 2) - 1
     rho = tf.minimum(alpha + beta / U, 1)
 
-    F = (tf.linalg.trace(cov) / p) * tf.eye(p, dtype=tf.float64)
+    F = (tf.linalg.trace(cov) / p) * tf.eye(p)
     return (1 - rho) * cov + rho * F, rho
 
 
-def calc_cov(x, y, rblw=False, use_shrinkage=False, no_normalize=False):
+def calc_cov(x, y, rblw=False, use_shrinkage=False, no_normalize=False, double=False):
     """Calculates covariance matrix from a batch of tensorflow data.
     x: first set of variables as an tensorflow array
     y: second set of variables as an tensorflow array
@@ -36,10 +36,18 @@ def calc_cov(x, y, rblw=False, use_shrinkage=False, no_normalize=False):
     use_shrinkage: if to use shrinkage at all
     no_normalize: do not normalize by the number of samples
     """
-    x = tf.cast(x, tf.float64)
-    y = tf.cast(y, tf.float64)
-    N = tf.cast(tf.shape(x)[0], tf.float64)
-    feat = tf.cast(tf.shape(x)[1], tf.float64)
+
+    if not double:
+        x = tf.cast(x, tf.float32)
+        y = tf.cast(y, tf.float32)
+        N = tf.cast(tf.shape(x)[0], tf.float32)
+        feat = tf.cast(tf.shape(x)[1], tf.float32)
+    else:
+        x = tf.cast(x, tf.float64)
+        y = tf.cast(y, tf.float64)
+        N = tf.cast(tf.shape(x)[0], tf.float64)
+        feat = tf.cast(tf.shape(x)[1], tf.float64)
+
     if not no_normalize:
         cov = 1 / N * tf.matmul(x, y, transpose_a=True)
     else:
