@@ -15,13 +15,22 @@ class SRV:
         split: split between training and validation set.
     """
 
-    def __init__(self, model=None, optimizer=None, epochs=None, lagtime=1, split=0.1):
+    def __init__(
+        self,
+        model=None,
+        optimizer=None,
+        epochs=None,
+        lagtime=1,
+        split=0.1,
+        non_reversible=False,
+    ):
         self.model = model
         self.training_data = None
         self.split = split
         self.optimizer = optimizer
         self.epochs = epochs
         self.ae_lagtime = lagtime
+        self.non_reversible = non_reversible
 
         # eigenvectors and their stats
         self.eigenvectors_ = None
@@ -197,13 +206,18 @@ class SRV:
         zt0_concat = tf.cast(zt0_concat, tf.float64)
         ztt_concat = tf.cast(ztt_concat, tf.float64)
         # calc covariances
-        cov_01 = calc_cov(zt0_concat, ztt_concat)
-        cov_10 = calc_cov(ztt_concat, zt0_concat)
-        cov_00 = calc_cov(zt0_concat, zt0_concat)
-        cov_11 = calc_cov(ztt_concat, ztt_concat)
+        if not self.non_reversible:
+            cov_01 = calc_cov(zt0_concat, ztt_concat)
+            cov_10 = calc_cov(ztt_concat, zt0_concat)
+            cov_00 = calc_cov(zt0_concat, zt0_concat)
+            cov_11 = calc_cov(ztt_concat, ztt_concat)
 
-        self.cov_0 = 0.5 * (cov_00 + cov_11)
-        self.cov_1 = 0.5 * (cov_01 + cov_10)
+            self.cov_0 = 0.5 * (cov_00 + cov_11)
+            self.cov_1 = 0.5 * (cov_01 + cov_10)
+        else:
+            self.cov_0 = calc_cov(zt0_concat, zt0_concat)
+            self.cov_1 = cov_01 = calc_cov(zt0_concat, ztt_concat)
+
         assert self.cov_0.shape[0] == zt0_nom.shape[1]
 
         cov_1_numpy = self.cov_1.numpy()
@@ -223,7 +237,7 @@ class SRV:
         self.norms_ = tf.math.sqrt(tf.reduce_mean(z * z, axis=0))
 
     @tf.function
-    def loss_func_vamp(self, shift, back, reversible=False, constr_cov=True):
+    def loss_func_vamp(self, shift, back, non_reversible=False, constr_cov=True):
         """Calculates the VAMP-2 score with respect to the network lobes.
 
         Based on:
@@ -251,19 +265,24 @@ class SRV:
         zt0 = zt0 - zt0_mean
         ztt = ztt - ztt_mean
         # shape (output, output)
-        cov_01 = calc_cov(zt0, ztt)
-        cov_10 = calc_cov(ztt, zt0)
-        cov_00 = calc_cov(zt0, zt0)
-        cov_11 = calc_cov(ztt, ztt)
-        cov_0 = 0.5 * (cov_00 + cov_11)
-        cov_1 = 0.5 * (cov_01 + cov_10)
+        if not non_reversible:
+            cov_01 = calc_cov(zt0, ztt)
+            cov_10 = calc_cov(ztt, zt0)
+            cov_00 = calc_cov(zt0, zt0)
+            cov_11 = calc_cov(ztt, ztt)
+            cov_0 = 0.5 * (cov_00 + cov_11)
+            cov_1 = 0.5 * (cov_01 + cov_10)
+        else:
+            cov_0 = calc_cov(zt0, zt0)
+            cov_1 = calc_cov(zt0, ztt)
+
         L = tf.linalg.cholesky(cov_0)
         Linv = tf.linalg.inv(L)
         add_loss = 0
         A = tf.matmul(tf.matmul(Linv, cov_1), Linv, transpose_b=True)
         # make sure that all matrices are positive definitive
         lambdas, eig_v = tf.linalg.eigh(A)
-        if constr_cov:
+        if constr_cov and not non_reversible:
             add_loss += (
                 -tf.reduce_mean(
                     tf.math.sign(tf.linalg.eigh(cov_11)[0])
@@ -272,6 +291,9 @@ class SRV:
                 / 2
             )
             add_loss += -tf.reduce_sum(tf.math.sign(lambdas))
+        elif constr_cov:
+            add_loss += -tf.reduce_sum(tf.math.sign(lambdas))
+
         # train only with respect to positive eigenvalues
         loss = -1 - tf.reduce_sum(lambdas**2) + add_loss
         loss = tf.cast(loss, tf.float32)
@@ -292,7 +314,9 @@ class SRV:
             out_shift = self.model(shift, training=True)
             out_back = self.model(back, training=True)
             regul_loss = tf.reduce_sum(self.model.losses)
-            loss = self.loss_func_vamp(out_shift, out_back)
+            loss = self.loss_func_vamp(
+                out_shift, out_back, non_reversible=self.non_reversible
+            )
             loss += regul_loss
             trainable_var = self.model.trainable_variables
         grads = tape.gradient((loss), trainable_var)
