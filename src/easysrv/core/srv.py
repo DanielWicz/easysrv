@@ -69,6 +69,7 @@ class SRV:
         history = {
             "eigenvalues": list(self.eigenvalues_.numpy()),
             "VAMP2 valid score": self.validation_vamp,
+            "VAMP2 training score": self.train_vamp,
             "Training loss": self.train_loss,
             "Val Training loss": self.train_val_loss,
         }
