@@ -226,7 +226,7 @@ class SRV:
             self.cov_1 = 0.5 * (cov_01 + cov_10)
         else:
             self.cov_0 = calc_cov(zt0_concat, zt0_concat, double=True)
-            self.cov_1 = cov_01 = calc_cov(zt0_concat, ztt_concat, double=True)
+            self.cov_1 = calc_cov(zt0_concat, ztt_concat, double=True)
 
         assert self.cov_0.shape[0] == zt0_nom.shape[1]
 
