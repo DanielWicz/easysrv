@@ -44,6 +44,7 @@ class SRV:
         # stats
 
         self.train_loss = []
+        self.train_vamp = []
         self.train_val_loss = []
         self.validation_vamp = []
 
@@ -126,7 +127,8 @@ class SRV:
         for i in range(self.epochs):
             loss = []
             val_loss = []
-            vamp2_met = []
+            vamp2_met_train = []
+            vamp2_met_val = []
             random.shuffle(self.training_data)
             # to vary the number of mixed batches
             n_cached = min(10 + random.randint(0, 10), len(self.training_data))
@@ -143,7 +145,11 @@ class SRV:
                         batch_shift,
                         batch_back,
                     )
+                    vamp2_score_train = metric_VAMP2(
+                        self.model(batch_back), self.model(batch_shift)
+                    )
                     loss.append(batch_ae_loss)
+                    vamp2_met_train.append(vamp2_score_train)
             for batch in self.validation_data:
                 batch_shift = self.model(
                     tf.convert_to_tensor(batch[self.ae_lagtime :]), training=False
@@ -151,18 +157,21 @@ class SRV:
                 batch_back = self.model(
                     tf.convert_to_tensor(batch[: -self.ae_lagtime]), training=False
                 )
-                vamp2_score = metric_VAMP2(batch_back, batch_shift)
+                vamp2_score_val = metric_VAMP2(batch_back, batch_shift)
                 batch_val_loss = self.loss_func_vamp(batch_back, batch_shift)
-                vamp2_met.append(vamp2_score)
+                vamp2_met_val.append(vamp2_score_val)
                 val_loss.append(batch_val_loss)
             mean_loss = float(np.mean(loss))
+            mean_vamp2_train = float(np.mean(vamp2_met_train))
             mean_val_loss = float(np.mean(val_loss))
-            mean_vamp2 = float(np.mean(vamp2_met))
+            mean_vamp2 = float(np.mean(vamp2_met_val))
             self.train_loss.append(mean_loss)
+            self.train_vamp.append(mean_vamp2_train)
             self.train_val_loss.append(mean_val_loss)
             self.validation_vamp.append(mean_vamp2)
             if verbose:
                 print("Loss for epoch {0} is {1}".format(i, mean_loss))
+                print("VAMP2 for epoch {0} is {1}".format(i, mean_vamp2_train))
                 print("Val Loss for epoch {0} is {1}".format(i, mean_val_loss))
                 print("Validation VAMP2 for epoch {0} is {1}".format(i, mean_vamp2))
 
